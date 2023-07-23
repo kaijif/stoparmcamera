@@ -209,7 +209,7 @@ bool startWifi(bool firstcall) {
     if (!strcmp(WiFi.SSID(i).c_str(), ST_SSID))
       LOG_INF("Wifi stats for %s - signal strength: %d dBm; Encryption: %s; channel: %u",  ST_SSID, WiFi.RSSI(i), getEncType(i), WiFi.channel(i));
   }
-  if (pingHandle == NULL) startPing();
+  // if (pingHandle == NULL) startPing();
   return wlStat == WL_CONNECTED ? true : false;
 }
 
