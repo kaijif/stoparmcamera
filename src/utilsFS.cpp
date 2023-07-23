@@ -56,7 +56,7 @@ static bool prepSD_MMC() {
   SD_MMC.setPins(7,9,8);
 #endif
   
-  res = SD_MMC.begin("/sdcard", true, formatIfMountFailed);
+  res = SD_MMC.begin("/sdcard", true, formatIfMountFailed, 20000);
 #if defined(CAMERA_MODEL_AI_THINKER)
   pinMode(4, OUTPUT);
   digitalWrite(4, 0); // set lamp pin fully off as sd_mmc library still initialises pin 4 in 1 line mode
