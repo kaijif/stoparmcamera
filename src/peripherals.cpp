@@ -478,6 +478,14 @@ static void prepPIR() {
   }
 }
 
+static void prepLimitSwitch() {
+  pinMode(LIMIT_SWITCH_PIN, INPUT_PULLUP);
+}
+
+bool readLimitSwitch() {
+  return digitalRead(LIMIT_SWITCH_PIN);
+}
+
 void prepPeripherals() {
   // initial setup of each peripheral on client or extender
   setupBatt();
@@ -486,5 +494,6 @@ void prepPeripherals() {
   prepPIR();
   prepTemperature();
   prepServos();  
+  prepLimitSwitch();
   debugMemory("prepPeripherals");
 }
