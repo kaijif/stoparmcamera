@@ -483,6 +483,8 @@ static void prepLimitSwitch() {
 }
 
 bool readLimitSwitch() {
+  // LOG_INF("hey this is always returning false!!!");
+  // return false;
   return digitalRead(LIMIT_SWITCH_PIN);
 }
 

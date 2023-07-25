@@ -67,13 +67,14 @@ class S3HttpClient : public HTTPClient {
                     
                     size_t prelude_sent = _client->write(prelude);
                     if (prelude_sent > 0) {
-                        LOG_INF("8");
+                        LOG_INF("Sent headers to S3");
                     }
                     uint32_t writeBytes = 0, progCnt = 0; 
                     uint32_t uploadStart = millis();
                     size_t readLen, writeLen;
                     byte uploadChunk[5 * 1024];
                     float_t s3PercentLoaded = 0;
+                    bool logCheckpoints[11] = {false, false, false, false, false, false, false, false, false, false, false};
                     do {
                     // upload file in chunks
                         readLen = file.read(uploadChunk, 5 * 1024);
@@ -84,14 +85,19 @@ class S3HttpClient : public HTTPClient {
                                 LOG_INF("Done writing for file");
                                 break;
                             } else {
-                                Serial.print('=');
+                                float_t pctComplete = (writeBytes * 100 / file.size());
+                                int8_t checkpoint = (int8_t)floor(pctComplete / 10);
+                                if (!logCheckpoints[checkpoint]) {
+                                    LOG_INF("%i percent done", (int8_t)floor(pctComplete));
+                                    logCheckpoints[checkpoint] = true;
+                                }
                             }
                         }
                     } while (readLen > 0);
                     size_t tail_written = _client->write(tail);
 
                     if (tail_written > 0) {
-                        Serial.println("D");
+                        LOG_INF("Fin");
                     }
 
 
@@ -311,7 +317,7 @@ void uploadTask(void* parameterz){
 void messageHandler(char* topic, byte* payload, unsigned int length) {
     LOG_INF("Got response from AWS IOT");
     memcpy(payloadBuffer, (char*)payload, length);
-    xTaskCreate(&uploadTask, "upload_task", 12000, NULL, 2, NULL);
+    xTaskCreate(&uploadTask, "upload_task", 16000, NULL, 2, NULL);
     return;
 }
 
@@ -320,6 +326,7 @@ void mqttLoop(void* parameters) {
         if (!s3MqttClient.loop()) {
             LOG_ERR("Loop blew up?");
             error = true;
+            vTaskDelete(NULL);
         }
     }
 }

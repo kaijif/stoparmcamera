@@ -119,10 +119,10 @@ static void onWiFiEvent(WiFiEvent_t event) {
   }
   else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
     LOG_INF("Wifi Station IP, use 'http://%s' to connect", WiFi.localIP().toString().c_str()); 
-    LOG_INF("Starting upload task...");
     if (!isUploadingToS3) {
+      getLocalNTP();
       LOG_INF("Starting upload task...");
-      xTaskCreate(&uploadAllOnWifiConnect, "upload_task", 5000, NULL, 2, NULL);
+      xTaskCreate(&uploadAllOnWifiConnect, "upload_task", 7000, NULL, 2, NULL);
     } else {
       LOG_INF("Already uploading");
     }
@@ -131,7 +131,7 @@ static void onWiFiEvent(WiFiEvent_t event) {
   else if (event == ARDUINO_EVENT_WIFI_STA_LOST_IP) LOG_INF("Wifi Station lost IP");
   else if (event == ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED);
   else if (event == ARDUINO_EVENT_WIFI_STA_CONNECTED) LOG_INF("WiFi Station connection to %s, using hostname: %s", ST_SSID, hostName);
-  else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) LOG_INF("WiFi Station disconnected");
+  // else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) LOG_INF("WiFi Station disconnected");
   else if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) LOG_INF("WiFi AP client connection");
   else if (event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) LOG_INF("WiFi AP client disconnection");
   else LOG_WRN("WiFi Unhandled event %d", event);
@@ -170,7 +170,7 @@ static void setWifiSTA() {
       LOG_INF("Wifi Station set static IP");
     } 
   } else LOG_INF("Wifi Station IP from DHCP");
-  WiFi.begin("SJNAN", "221138221138");
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
   debugMemory("setWifiSTA");
 }
 
