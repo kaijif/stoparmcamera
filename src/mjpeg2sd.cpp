@@ -255,7 +255,7 @@ static void saveFrame(camera_fb_t* fb) {
   LOG_DBG("Frame processing time %u ms", fTime);
 }
 
-static bool closeAvi() {
+static bool closeAvi(bool sawMotion = false) {
   // closes the recorded file
   uint32_t vidDuration = millis() - startTime;
   uint32_t vidDurationSecs = lround(vidDuration/1000.0);
@@ -292,43 +292,43 @@ static bool closeAvi() {
   aviFile.close();
   LOG_DBG("Final SD storage time %lu ms", millis() - cTime);
   uint32_t hTime = millis(); 
-  if (vidDurationSecs >= minSeconds) {
+  if (vidDurationSecs >= MIN_REC_TIME_SECONDS) {
     // name file to include actual dateTime, FPS, duration, and frame count
     int alen = snprintf(aviFileName, FILE_NAME_LEN - 1, "%s_%s.%s", 
       partName, BUS_NUMBER, FILE_EXT);
-    if (alen > FILE_NAME_LEN - 1) LOG_WRN("file name truncated");
-    SD_MMC.rename(AVITEMP, aviFileName);
-    LOG_DBG("AVI close time %lu ms", millis() - hTime); 
-    cTime = millis() - cTime;
-    // AVI stats
-    LOG_INF("******** AVI recording stats ********");
-    LOG_ALT("Recorded %s", aviFileName);
-    LOG_INF("AVI duration: %u secs", vidDurationSecs);
-    LOG_INF("Number of frames: %u", frameCnt);
-    LOG_INF("Required FPS: %u", FPS);
-    LOG_INF("Actual FPS: %0.1f", actualFPS);
-    LOG_INF("File size: %0.2f MB", (float)vidSize / ONEMEG);
-    if (frameCnt) {
-      LOG_INF("Average frame length: %u bytes", vidSize / frameCnt);
-      LOG_INF("Average frame monitoring time: %u ms", dTimeTot / frameCnt);
-      LOG_INF("Average frame buffering time: %u ms", fTimeTot / frameCnt);
-      LOG_INF("Average frame storage time: %u ms", wTimeTot / frameCnt);
-    }
-    LOG_INF("Average SD write speed: %u kB/s", ((vidSize / wTimeTot) * 1000) / 1024);
-    LOG_INF("File open / completion times: %u ms / %u ms", oTime, cTime);
-    LOG_INF("Busy: %u%%", std::min(100 * (wTimeTot + fTimeTot + dTimeTot + oTime + cTime) / vidDuration, (uint32_t)100));
-    checkMemory();
-    LOG_INF("*************************************");
-    if (mqtt_active) {
-      sprintf(jsonBuff, "{\"RECORD\":\"OFF\", \"TIME\":\"%s\"}", esp_log_system_timestamp());
-      mqttPublish(jsonBuff);
-    }
-    if (autoUpload) ftpFileOrFolder(aviFileName); // Upload it to remote ftp server if requested
-    checkFreeSpace();
-    char subjectMsg[50];
-    sprintf(subjectMsg, "Frame %u attached", smtpFrame);
-    emailAlert("Motion Alert", subjectMsg);
-    return true; 
+  if (alen > FILE_NAME_LEN - 1) LOG_WRN("file name truncated");
+  SD_MMC.rename(AVITEMP, aviFileName);
+  LOG_DBG("AVI close time %lu ms", millis() - hTime); 
+  cTime = millis() - cTime;
+  // AVI stats
+  LOG_INF("******** AVI recording stats ********");
+  LOG_ALT("Recorded %s", aviFileName);
+  LOG_INF("AVI duration: %u secs", vidDurationSecs);
+  LOG_INF("Number of frames: %u", frameCnt);
+  LOG_INF("Required FPS: %u", FPS);
+  LOG_INF("Actual FPS: %0.1f", actualFPS);
+  LOG_INF("File size: %0.2f MB", (float)vidSize / ONEMEG);
+  if (frameCnt) {
+    LOG_INF("Average frame length: %u bytes", vidSize / frameCnt);
+    LOG_INF("Average frame monitoring time: %u ms", dTimeTot / frameCnt);
+    LOG_INF("Average frame buffering time: %u ms", fTimeTot / frameCnt);
+    LOG_INF("Average frame storage time: %u ms", wTimeTot / frameCnt);
+  }
+  LOG_INF("Average SD write speed: %u kB/s", ((vidSize / wTimeTot) * 1000) / 1024);
+  LOG_INF("File open / completion times: %u ms / %u ms", oTime, cTime);
+  LOG_INF("Busy: %u%%", std::min(100 * (wTimeTot + fTimeTot + dTimeTot + oTime + cTime) / vidDuration, (uint32_t)100));
+  checkMemory();
+  LOG_INF("*************************************");
+  if (mqtt_active) {
+    sprintf(jsonBuff, "{\"RECORD\":\"OFF\", \"TIME\":\"%s\"}", esp_log_system_timestamp());
+    mqttPublish(jsonBuff);
+  }
+  if (autoUpload) ftpFileOrFolder(aviFileName); // Upload it to remote ftp server if requested
+  checkFreeSpace();
+  char subjectMsg[50];
+  sprintf(subjectMsg, "Frame %u attached", smtpFrame);
+  emailAlert("Motion Alert", subjectMsg);
+  return true; 
   } else {
     // delete too small files if exist
     SD_MMC.remove(AVITEMP);
@@ -406,6 +406,51 @@ static boolean processFrame() {
   return res;
 }
 
+static boolean processStopArmFrame() {
+  static bool wasCapturing = false;
+  static bool sawMotion = false;
+  static unsigned long timeStarted;
+  bool limitSwitchState = readLimitSwitch();
+  static bool stopRecording = false;
+  if (limitSwitchState && !stopRecording) {
+    if (!wasCapturing) {
+        LOG_INF("Capture started in stoparm function");
+        stopPlaying();
+        stopPlayback = true;
+        openAvi();
+        wasCapturing = true;
+        timeStarted =  millis();
+    }
+    camera_fb_t* fb = esp_camera_fb_get();
+    // timeLapse(fb);
+    if (!sawMotion) {
+      sawMotion = checkMotion(fb, false);
+    }
+    if (fb == NULL) {
+      LOG_ERR("Error getting camera data, stopping recording");
+      stopRecording = true;
+      return false;
+    }
+    saveFrame(fb);
+    if (fb != NULL) esp_camera_fb_return(fb);
+    if (millis() - timeStarted > MAX_CAPTURE_TIME_MILLIS) {
+      stopRecording = true;
+      LOG_INF("Been capturing for too long, stopping...");
+    }
+  } else {
+    if (wasCapturing) {
+      closeAvi(sawMotion);
+      if (sawMotion) {
+        LOG_INF("Saw motion on that recording");
+      } else {
+        LOG_INF("Did not see motion");
+      }
+      wasCapturing = stopPlayback = sawMotion = stopRecording = false;
+    }
+  }
+  return true;
+}
+
 static void captureTask(void* parameter) {
   // woken by frame timer when time to capture frame
   uint32_t ulNotifiedValue;
@@ -413,7 +458,7 @@ static void captureTask(void* parameter) {
     ulNotifiedValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     if (ulNotifiedValue > 5) ulNotifiedValue = 5; // prevent too big queue if FPS excessive
     // may be more than one isr outstanding if the task delayed by SD write or jpeg decode
-    while (ulNotifiedValue-- > 0) processFrame();
+    while (ulNotifiedValue-- > 0) processStopArmFrame();
   }
   vTaskDelete(NULL);
 }
@@ -639,7 +684,7 @@ static void playbackTask(void* parameter) {
 
 static void startSDtasks() {
   // tasks to manage SD card operation
-  xTaskCreate(&captureTask, "captureTask", 1024 * 4, NULL, 5, &captureHandle);
+  xTaskCreate(&captureTask, "captureTask", 1024 * 5, NULL, 5, &captureHandle);
   xTaskCreate(&playbackTask, "playbackTask", 1024 * 4, NULL, 4, &playbackHandle);
   sensor_t * s = esp_camera_sensor_get();
   fsizePtr = s->status.framesize; 
