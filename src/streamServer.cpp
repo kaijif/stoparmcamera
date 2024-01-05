@@ -1,7 +1,7 @@
-// mjpeg2sd specific web functions
+
 // streamServer handles streaming and stills
 //
-// s60sc 2022
+// kaiji
 //
 
 #include "appGlobals.h"
@@ -20,7 +20,7 @@ bool isStreaming = false;
 static httpd_handle_t streamServer = NULL; 
 
 esp_err_t webAppSpecificHandler(httpd_req_t *req, const char* variable, const char* value) {
-  // update handling requiring response specific to mjpeg2sd
+  
   if (!strcmp(variable, "sfile")) {
     // get folders / files on SD, save received filename if has required extension
     strcpy(inFileName, value);

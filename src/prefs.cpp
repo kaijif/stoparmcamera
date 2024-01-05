@@ -22,7 +22,7 @@
   - R : Range (as slider) R:min:max:step
   - B : Radio Buttons B:lab1:lab2:etc
 
-  s60sc 2022
+  kaiji
 */
 
 #include "appGlobals.h"

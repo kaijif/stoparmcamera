@@ -20,7 +20,7 @@
 // the peripherals.cpp and have compatible configuration settings
 // with respect to pin numbers etc
 //
-// s60sc 2022
+// kaiji
 
 #include "appGlobals.h"
 

@@ -9,7 +9,7 @@
 //
 // I2S_NUM_1 does not support PDM microphone
 
-// s60sc 2021, 2022
+// kaiji
 
 #include "appGlobals.h"
 

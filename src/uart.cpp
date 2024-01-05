@@ -16,7 +16,7 @@
 // - 4 bytes are data of any type that fits in 32 bits or less
 // - 1 byte checksum
 //
-// s60sc 2022
+// kaiji
 
 #include "appGlobals.h"
 #include "driver/uart.h"
@@ -123,7 +123,7 @@ static void getExtenderResponse() {
 }
 
 void uartClientTask(void *arg) {
-  // task for client, eg MJPEG2SD
+  
   delay(2000); // time to complete startup
   configureUart();
   while (true) {

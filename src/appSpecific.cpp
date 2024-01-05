@@ -1,6 +1,6 @@
-// mjpeg2sd specific config functions
+
 //
-// s60sc 2022
+// kaiji
 
 #include "appGlobals.h"
 

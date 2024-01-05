@@ -6,7 +6,7 @@
 // - base64 encoding
 // - device sleep
 //
-// s60sc 2021, 2023
+// kaiji
 // some functions based on code contributed by gemi254
 
 #include "appGlobals.h"
@@ -131,7 +131,7 @@ static void onWiFiEvent(WiFiEvent_t event) {
   else if (event == ARDUINO_EVENT_WIFI_STA_LOST_IP) LOG_INF("Wifi Station lost IP");
   else if (event == ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED);
   else if (event == ARDUINO_EVENT_WIFI_STA_CONNECTED) LOG_INF("WiFi Station connection to %s, using hostname: %s", ST_SSID, hostName);
-  // else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) LOG_INF("WiFi Station disconnected");
+  else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {}
   else if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) LOG_INF("WiFi AP client connection");
   else if (event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) LOG_INF("WiFi AP client disconnection");
   else LOG_WRN("WiFi Unhandled event %d", event);
@@ -171,6 +171,7 @@ static void setWifiSTA() {
     } 
   } else LOG_INF("Wifi Station IP from DHCP");
   WiFi.begin(WIFI_SSID, WIFI_PASS);
+  
   debugMemory("setWifiSTA");
 }
 

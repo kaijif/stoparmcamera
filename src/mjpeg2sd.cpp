@@ -3,7 +3,7 @@
 * matches file writes to the SD card sector size.
 * AVI files stored on the SD card can also be selected and streamed to a browser.
 *
-* s60sc 2020, 2022
+* kaiji
 */
 
 #include "appGlobals.h"
@@ -406,6 +406,84 @@ static boolean processFrame() {
   return res;
 }
 
+int normal_jpg = 0;
+int extend_jpg = 0;
+int bad_jpg = 0;
+
+camera_fb_t *  get_good_jpeg() {
+
+  camera_fb_t * fb;
+
+  long start;
+  int failures = 0;
+
+  do {
+    int fblen = 0;
+    int foundffd9 = 0;
+    long bp = millis();
+    long mstart = micros();
+
+    fb = esp_camera_fb_get();
+    if (!fb) {
+      Serial.println("Camera Capture Failed");
+      failures++;
+    } else {
+      long mdelay = micros() - mstart;
+
+      int get_fail = 0;
+      fblen = fb->len;
+
+      for (int j = 1; j <= 1025; j++) {
+        if (fb->buf[fblen - j] != 0xD9) {
+          // no d9, try next for
+        } else {                                     //Serial.println("Found a D9");
+          if (fb->buf[fblen - j - 1] == 0xFF ) {     //Serial.print("Found the FFD9, junk is "); Serial.println(j);
+            if (j == 1) {
+              normal_jpg++;
+            } else {
+              extend_jpg++;
+            }
+            foundffd9 = 1;
+            if (true) {
+              if (j > 900) {                             //  rarely happens - sometimes on 2640
+                Serial.print(", Len = "); Serial.print(fblen);
+                //Serial.print(", Correct Len = "); Serial.print(fblen - j + 1);
+                Serial.print(", Extra Bytes = "); Serial.println( j - 1);
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      if (!foundffd9) {
+        bad_jpg++;
+        Serial.printf("Bad jpeg, Len = %d \n", fblen);
+        esp_camera_fb_return(fb);
+        failures++;
+
+      } else {
+        break;
+        // count up the useless bytes
+      }
+    }
+
+  } while (failures < 10);   // normally leave the loop with a break()
+
+  // if we get 10 bad frames in a row, then quality parameters are too high - set them lower (+5), and start new movie
+  if (failures == 10) {     
+    Serial.printf("10 failures");
+
+    sensor_t * ss = esp_camera_sensor_get();
+    int qual = ss->status.quality ;
+    ss->set_quality(ss, qual + 5);
+    Serial.printf("\n\nDecreasing quality due to frame failures %d -> %d\n\n", qual, qual + 5);
+    delay(1000);
+    //reboot_now = true;
+  }
+  return fb;
+}
+
 static boolean processStopArmFrame() {
   static bool wasCapturing = false;
   static bool sawMotion = false;
@@ -413,6 +491,7 @@ static boolean processStopArmFrame() {
   bool limitSwitchState = readLimitSwitch();
   static bool stopRecording = false;
   if (limitSwitchState && !stopRecording) {
+    camera_fb_t* fb = get_good_jpeg();
     if (!wasCapturing) {
         LOG_INF("Capture started in stoparm function");
         stopPlaying();
@@ -420,12 +499,12 @@ static boolean processStopArmFrame() {
         openAvi();
         wasCapturing = true;
         timeStarted =  millis();
+        checkMotion(fb, false);
     }
-    camera_fb_t* fb = esp_camera_fb_get();
     // timeLapse(fb);
-    if (!sawMotion) {
-      sawMotion = checkMotion(fb, false);
-    }
+    // if (!sawMotion && doMonitor(sawMotion)) {
+    //   sawMotion = checkMotion(fb, false);
+    // }
     if (fb == NULL) {
       LOG_ERR("Error getting camera data, stopping recording");
       stopRecording = true;

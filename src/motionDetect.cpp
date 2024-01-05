@@ -11,7 +11,7 @@
  When frame size is changed the OV2640 outputs a few glitched frames whilst it 
  makes the transition. These could be interpreted as spurious motion.
  
- s60sc 2020
+ kaiji
 */
 
 #include "appGlobals.h"
@@ -132,8 +132,8 @@ bool checkMotion(camera_fb_t* fb, bool motionStatus) {
   rgb_buf = NULL;
   LOG_DBG("Detected %u changes, threshold %u, light level %u, in %lums", changeCount, moveThreshold, lightLevel, millis() - dTime);
   dTime = millis();
-
-  if (changeCount > moveThreshold) {
+  LOG_INF("Change count: %i", changeCount);
+  if (changeCount > DETECT_MOTION_FRAMES) {
     LOG_DBG("### Change detected");
     motionCnt++; // number of consecutive changes
     // need minimum sequence of changes to signal valid movement

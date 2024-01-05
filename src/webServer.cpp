@@ -2,7 +2,7 @@
 // httpServer handles browser http requests and websocket interaction 
 // otaServer does file uploads
 //
-// s60sc 2022
+// kaiji
 
 #include "appGlobals.h"
 

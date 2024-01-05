@@ -2,7 +2,7 @@
 * Capture ESP32 Cam JPEG images into a AVI file and store on SD
 * AVI files stored on the SD card can also be selected and streamed to a browser as MJPEG.
 *
-* s60sc 2020 - 2023
+* kaiji
 */
 
 #include "appGlobals.h"
@@ -52,7 +52,7 @@ static void prepCam() {
 #else
   config.frame_size = FRAMESIZE_UXGA;  // 4M
 #endif  
-  config.jpeg_quality = 10;
+  config.jpeg_quality = 0;
   config.fb_count = 4;
 
 #if defined(CAMERA_MODEL_ESP_EYE)
@@ -78,6 +78,7 @@ static void prepCam() {
     if (err != ESP_OK) sprintf(startupFailure, "Startup Failure: Camera init error 0x%x", err);
     else {
       sensor_t * s = esp_camera_sensor_get();
+      s->set_brightness(s, 1);
       switch (s->id.PID) {
         case (OV2640_PID):
           strcpy(camModel, "OV2640");
@@ -87,7 +88,7 @@ static void prepCam() {
         break;
         case (OV5640_PID):
           strcpy(camModel, "OV5640");
-        break;
+          break;
         default:
           strcpy(camModel, "Other");
         break;
@@ -122,8 +123,10 @@ static void prepCam() {
   debugMemory("prepCam");
 }
 
-void setup() {   
-  vTaskDelay(5000);
+void setup() {  
+  vTaskDelay(5000); 
+  // pinMode(LED_BUILTIN, OUTPUT);           // turn the LED on (HIGH is the voltage level)
+  // digitalWrite(BUILTIN_LED, LOW);   // turn the LED off by making the voltage LOW
   logSetup();
   LOG_INF("=============== Starting ===============");
   if (!psramFound()) sprintf(startupFailure, "Startup Failure: Need PSRAM to be enabled");
@@ -159,5 +162,9 @@ void setup() {
 }
 
 void loop() {
+  // digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
+  // delay(1000);                      // wait for a second
+  // digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
+  // delay(1000);   
   vTaskDelete(NULL); // free 8k ram
 }
